@@ -2,13 +2,24 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const dotenv = require('dotenv');
+
+// THIS IS THE MOST IMPORTANT STEP: LOAD AND TEST ENVIRONMENT VARIABLES
+dotenv.config();
+
+// --- TEST CODE TO FIND THE PROBLEM ---
+console.log('====================================================');
+console.log('--- SERVER STARTING: CHECKING .ENV VARIABLES ---');
+console.log('EMAIL_USER loaded on start:', process.env.EMAIL_USER);
+console.log('If the value above is "undefined", your .env file is in the wrong location.');
+console.log('====================================================');
+// --- END OF TEST CODE ---
+
+
 const connectDB = require('./config/database');
 const contactRoutes = require('./routes/contactRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const { generalLimiter, contactLimiter } = require('./middleware/rateLimiter');
 
-// Load environment variables
-dotenv.config();
 
 // Connect to database
 connectDB();
@@ -18,10 +29,7 @@ const app = express();
 // Security middleware
 app.use(helmet());
 
-// Rate limiting
-app.use('/api/', generalLimiter);
-
-// CORS configuration
+// CORS configuration - Essential for connecting frontend and backend
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true,
@@ -29,11 +37,11 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Body parsing middleware
+// Body parsing middleware - THIS MUST BE BEFORE YOUR ROUTES
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Trust proxy (important for rate limiting and IP detection)
+// Trust proxy (important for rate limiting if behind a proxy like Nginx or Heroku)
 app.set('trust proxy', 1);
 
 // Health check endpoint
@@ -41,13 +49,12 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Server is running successfully',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV
   });
 });
 
 // API routes
-app.use('/api/contact', contactLimiter, contactRoutes);
+app.use('/api/', generalLimiter); // General rate limiter for all /api/ routes
+app.use('/api/contact', contactLimiter, contactRoutes); // Specific limiter and routes for contact
 
 // Handle undefined routes
 app.all('*', (req, res) => {
@@ -57,34 +64,26 @@ app.all('*', (req, res) => {
   });
 });
 
-// Error handling middleware (must be last)
+// Error handling middleware (must be the last middleware)
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
 const server = app.listen(PORT, () => {
   console.log(`
-🚀 Server is running in ${process.env.NODE_ENV} mode
-📡 Port: ${PORT}
-🌐 Frontend URL: ${process.env.FRONTEND_URL}
-📊 MongoDB: ${process.env.MONGODB_URL ? 'Connected' : 'Not configured'}
-  `);
+🚀 Server is running in ${process.env.NODE_ENV} mode on port ${PORT}
+`);
 });
 
-// Handle unhandled promise rejections
+// Graceful shutdown for unhandled errors
 process.on('unhandledRejection', (err, promise) => {
-  console.log('Unhandled Rejection at:', promise, 'reason:', err);
-  server.close(() => {
-    process.exit(1);
-  });
+  console.error('Unhandled Rejection at:', promise, 'reason:', err);
+  server.close(() => process.exit(1));
 });
 
-// Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
-  console.log('Uncaught Exception:', err);
-  server.close(() => {
-    process.exit(1);
-  });
+  console.error('Uncaught Exception:', err);
+  server.close(() => process.exit(1));
 });
 
 module.exports = app;
