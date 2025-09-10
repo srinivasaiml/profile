@@ -107,8 +107,17 @@ const Contact = () => {
     setIsSubmitting(true);
     setSubmitStatus('idle');
 
+    // --- MODIFICATION START ---
+    // Construct the full API URL from the environment variable.
+    // This makes the component flexible for both development and production.
+    const API_URL = `${import.meta.env.VITE_API_BASE_URL}/api/contact`;
+    // --- MODIFICATION END ---
+
     try {
-      const response = await fetch('/api/contact', {
+      // --- MODIFICATION START ---
+      // Use the newly constructed API_URL in the fetch call.
+      const response = await fetch(API_URL, {
+      // --- MODIFICATION END ---
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -418,5 +427,5 @@ const Contact = () => {
     </section>
   );
 };
-
+    
 export default Contact;
