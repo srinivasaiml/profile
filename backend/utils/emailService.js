@@ -60,7 +60,7 @@ const sendConfirmationEmail = async (contact) => {
         <p>${contact.message.replace(/\n/g, '<br>')}</p>
       </div>
       <p>Best regards,</p>
-      <p><strong>Your Name</strong></p>
+      <p><strong>Srinivas patchipala.</strong></p>
       <br>
       <p><small>Please do not reply to this automated email. I will respond to you from my personal address.</small></p>
     `,
